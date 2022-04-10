@@ -121,6 +121,7 @@ static bool g_use_local_python = false;
 static bool g_autoimport_compat_idaapi = true;
 static bool g_autoimport_compat_ida695 = true;
 static bool g_namespace_aware = true;
+static bool g_repl_use_sys_displayhook = true;
 
 // Allowing the user to interrupt a script is not entirely trivial.
 // Imagine the following script, that is run in an IDB that uses
@@ -403,6 +404,19 @@ static PyObject *get_module_globals(const char *modname=NULL)
   return module == NULL ? NULL : PyModule_GetDict(module);
 }
 
+//-------------------------------------------------------------------------
+static ref_t _get_sys_displayhook()
+{
+  ref_t h;
+  if ( g_repl_use_sys_displayhook )
+  {
+    ref_t py_sys(PyW_TryImportModule("sys"));
+    if ( py_sys != NULL )
+      h = PyW_TryGetAttrString(py_sys.o, "displayhook");
+  }
+  return h;
+}
+
 //------------------------------------------------------------------------
 static void PythonEvalOrExec(
         const char *str,
@@ -435,7 +449,13 @@ static void PythonEvalOrExec(
     }
     else
     {
-      if ( py_result.o != Py_None )
+      ref_t sys_displayhook(_get_sys_displayhook());
+      if ( sys_displayhook != NULL )
+      {
+        //lint -esym(1788, res) is referenced only by its constructor or destructor
+        newref_t res(PyObject_CallFunctionObjArgs(sys_displayhook.o, py_result.o, NULL));
+      }
+      else if ( py_result.o != Py_None )
       {
         bool ok = false;
         if ( PyUnicode_Check(py_result.o) )
@@ -530,6 +550,7 @@ static const cfgopt_t opts[] =
   cfgopt_t("AUTOIMPORT_COMPAT_IDAAPI", &g_autoimport_compat_idaapi, true),
   cfgopt_t("AUTOIMPORT_COMPAT_IDA695", &g_autoimport_compat_ida695, true),
   cfgopt_t("NAMESPACE_AWARE", &g_namespace_aware, true),
+  cfgopt_t("REPL_USE_SYS_DISPLAYHOOK", &g_repl_use_sys_displayhook, true),
 };
 
 //-------------------------------------------------------------------------
