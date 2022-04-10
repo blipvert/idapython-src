@@ -36,6 +36,9 @@ What follows, are example build commands
       --idc /opt/my-ida-install/idc/idc.idc
 """,
                         formatter_class=argparse.RawTextHelpFormatter)
+if 'win32' in sys.platform:
+    parser.add_argument("--cygwin", type=str, help="Path to Cygwin", default=None)
+parser.add_argument("-D", "--define", type=str, help="Define variables for make", action="append")
 parser.add_argument("--swig-home", type=str, help="Path to the SWIG installation", default=None)
 parser.add_argument("--with-hexrays", help="Build Hex-Rays decompiler bindings (requires the 'hexrays.hpp' header to be present in the SDK's include/ directory)", default=False, action="store_true")
 parser.add_argument("--debug", help="Build debug version of the plugin", default=False, action="store_true")
@@ -80,6 +83,19 @@ def main():
             env["LINUX_PYTHON_HOME"] = args.python_home
     except:
         pass
+    if 'win32' in sys.platform:
+        if args.cygwin:
+            cygwin_bin = os.path.join(os.path.abspath(args.cygwin), 'bin')
+            path_dirs = os.environ['PATH'].split(';')
+            if cygwin_bin not in path_dirs:
+                path_dirs.insert(0, cygwin_bin)
+                os.environ['PATH'] = ';'.join(path_dirs)
+    for defn in args.define:
+        if '=' in defn:
+            eqlpos = defn.index('=')
+            env[defn[0:eqlpos]] = defn[eqlpos+1:]
+        else:
+            env[defn] = '1'
     if args.verbose:
         argv.append("-d")
     env["IDC_BC695_IDC_SOURCE"] = args.idc
