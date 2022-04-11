@@ -633,6 +633,69 @@ def __install_excepthook():
 __install_excepthook()
 
 
+# ------------------------------------------------------------
+class IDAPython_displayhook:
+    def __init__(self):
+        self.orig_displayhook = sys.displayhook
+
+    def format_seq(self, num_printer, storage, item, opn, cls):
+        storage.append(opn)
+        for idx, el in enumerate(item):
+            if idx > 0:
+                storage.append(', ')
+            self.format_item(num_printer, storage, el)
+        storage.append(cls)
+
+    def format_item(self, num_printer, storage, item):
+        if item is None or isinstance(item, bool):
+            storage.append(repr(item))
+        elif isinstance(item, basestring):
+            storage.append(_ida_idaapi.format_basestring(item))
+        elif isinstance(item, (int, long)):
+            storage.append(num_printer(item))
+        elif isinstance(item, list):
+            self.format_seq(num_printer, storage, item, '[', ']')
+        elif isinstance(item, tuple):
+            self.format_seq(num_printer, storage, item, '(', ')')
+        elif isinstance(item, set):
+            self.format_seq(num_printer, storage, item, 'set([', '])')
+        elif isinstance(item, (dict,)):
+            storage.append('{')
+            for idx, pair in enumerate(item.iteritems()):
+                if idx > 0:
+                    storage.append(', ')
+                self.format_item(num_printer, storage, pair[0])
+                storage.append(": ")
+                self.format_item(num_printer, storage, pair[1])
+            storage.append('}')
+        else:
+            storage.append(str(item))
+
+    def displayhook(self, item):
+        if item is None or type(item) is bool:
+            self.orig_displayhook(item)
+            return
+        try:
+            storage = []
+            import ida_idp
+            num_printer = hex
+            dn = ida_idp.ph_get_flag() & ida_idp.PR_DEFNUM
+            if dn == ida_idp.PRN_OCT:
+                num_printer = oct
+            elif dn == ida_idp.PRN_DEC:
+                num_printer = str
+            elif dn == ida_idp.PRN_BIN:
+                num_printer = bin
+            self.format_item(num_printer, storage, item)
+            sys.stdout.write("%s\n" % "".join(storage))
+        except:
+            import traceback
+            traceback.print_exc()
+            self.orig_displayhook(item)
+
+_IDAPython_displayhook = IDAPython_displayhook()
+sys.displayhook = _IDAPython_displayhook.displayhook
+
 # ----------------------------------- helpers for bw-compat w/ 6.95 API
 class __BC695:
     def __init__(self):
