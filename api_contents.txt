@@ -2867,6 +2867,7 @@
                'for_all_enum_members',
                'force_name',
                'forget_problem',
+               'format_basestring',
                'formchgcbfa_close',
                'formchgcbfa_enable_field',
                'formchgcbfa_get_field_value',
