@@ -48,6 +48,7 @@
 #define PYTHON_DIR_NAME                          "python"
 #define S_IDAPYTHON                              "IDAPython"
 #define S_INIT_PY                                "init.py"
+#define S_STARTUP_PY                             "startup.py"
 static const char S_IDC_ARGS_VARNAME[] =         "ARGV";
 static const char S_IDC_RUNPYTHON_STATEMENT[] =  "RunPythonStatement";
 static const char S_IDAPYTHON_DATA_NODE[] =      "IDAPython_Data";
@@ -1962,6 +1963,11 @@ bool IDAPython_Init(void)
 
   // Register a RunPythonStatement() function for IDC
   add_idc_func(idc_runpythonstatement_desc);
+
+  // Execute startup.py if it exists
+  qmakepath(path, MAXSTR, get_user_idadir(), S_STARTUP_PY, NULL);
+  if (qfileexist(path))
+    RunScript(path);
 
   // A script specified on the command line is run
   if ( g_run_when == RUN_ON_INIT )
